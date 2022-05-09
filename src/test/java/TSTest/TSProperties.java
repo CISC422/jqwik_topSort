@@ -1,9 +1,11 @@
 package TSTest;
 
+import TSImpl.TopSort;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.IntRange;
 import org.assertj.core.api.Assertions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -12,117 +14,326 @@ import static TSTest.TSHelpers.*;
 
 public class TSProperties {
 
-    @Property
-    @Report(Reporting.GENERATED)
-    void propGeneratorCheck (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn) {
-//        Assume.that(aCyclic(DependsOn));
-        if (aCyclic(DependsOn))
-            System.out.println("does NOT have cycle: " + Arrays.deepToString(DependsOn));
-        else
-            System.out.println("does have cycle: " + Arrays.deepToString(DependsOn));
-        Assertions.assertThat(aCyclic(DependsOn)).isTrue();
-    }
+    final int  numNodes = 4;  // set of nodes is {0, ..., numNodes-1}
 
     @Property
     @Report(Reporting.GENERATED)
-    void propComputeOrdering (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn) {
-        List<Integer> out=null;
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> DependencyL) {
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible3") List<List<Integer>> DependencyL) {
+    void propGeneratorSanityCheck (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+//        Assume.that(aCyclic(DependencyL));
+//        Assertions.assertThat(aCyclic(DependencyL));
+        if (aCyclic(DependencyL))
+            System.out.println("does NOT have cycle: " + toStringSorted(DependencyL));
+        else
+            System.out.println("does have cycle: " + toStringSorted(DependencyL));
+    }
+
+    // computed ordering does respect all dependencies
+    @Property
+    @Report(Reporting.GENERATED)
+//   void propCheckComputedOrdering1 (@ForAll("dependencyMatrices") Integer[][] DependencyM) {
+//    void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
+        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+  //      int numNodes = 4;
+        List<Integer> ordering=null;
         try {
-            out = computeOrdering(DependsOn);
-            Assertions.assertThat(checkOrdering(out,DependsOn)).isTrue();
-            Assertions.assertThat(aCyclic(DependsOn)).isTrue();
+            ordering = computeOrdering(numNodes, DependencyL);
+            System.out.println("dependencies: " + DependencyL);
+            System.out.println("order: " + ordering);
+            Assertions.assertThat(checkOrdering(ordering, DependencyL)).isTrue();
+  //          Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isTrue();
         } catch (CyclicDependenciesException e) {
             System.out.println("Cyclic dependencies!");
-            Assertions.assertThat(TSHelpers.aCyclic(DependsOn)).isFalse();
+            Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isFalse();
         }
     }
 
+    // if i depends on j (i.e., DependencyL contains [i,j]), then j will appear before i in the ordering computed
+    // problem: too many rejections (9K out of 10K)
+    // fix: grab pair from generated dependency list, instead of generating it randomly
     @Property
     @Report(Reporting.GENERATED)
-    void propGenerateSolution (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn,
-                               @ForAll("orders") List<Integer> order) {
-        Assume.that(aCyclic(DependsOn));
-        Assume.that(DependsOn.length == order.size());
-        Assume.that(checkOrdering(order,DependsOn) == true);
-//        Assertions.assertThat(checkOrdering(order,DependsOn)).isFalse();
-        System.out.println(Arrays.deepToString(DependsOn));
-        System.out.println("generated solution: " + order);
-    }
-
-    @Property
-    @Report(Reporting.GENERATED)
-    void propRemDependency (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn,
-                            @ForAll @IntRange(min=0, max=3) Integer i,
-                            @ForAll @IntRange(min=0, max=3) Integer j) {
-        Assume.that(aCyclic(DependsOn));
-        List<Integer> out0=null;
+    void propCheckComputedOrdering2a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+//        int numNodes = 4;
+        Assume.that(DependencyL.contains(Arrays.asList(i,j)));
+        List<Integer> ordering=null;
         try {
-            out0 = computeOrdering(DependsOn);
+            ordering = computeOrdering(numNodes, DependencyL);
         }
         catch (CyclicDependenciesException e) {
             System.out.println("Cyclic!");
         }
-        DependsOn = remDependency(i,j,DependsOn);
-        Assertions.assertThat(checkOrdering(out0, DependsOn)).isTrue();
-    }
-
-    @Property
-    @Report(Reporting.GENERATED)
-    void propAddDependency1 (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn,
-                             @ForAll @IntRange(min=0, max=3) Integer i,
-                             @ForAll @IntRange(min=0, max=3) Integer j) {
-        Assume.that(i != j);
-        DependsOn = addDependency(i,j,DependsOn);
-        Assume.that(aCyclic(DependsOn));
-        List<Integer> out=null;
-        try {
-            out = computeOrdering(DependsOn);
-        }
-        catch (CyclicDependenciesException e) {
-            System.out.println("Cyclic!");
-        }
-        int indexOfI = out.indexOf(i);
-        int indexOfJ = out.indexOf(j);
+        int indexOfI = ordering.indexOf(i);
+        int indexOfJ = ordering.indexOf(j);
         Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
     }
 
-    // property: if DM acyclic and DM1=add(i,j,DM) is cyclic, then reachable(j,i,DM)
-    // check that dimensions of generated matrices are consistent with generated indices
+    // if i depends on j (i.e., DependencyL contains [i,j]), then j will appear before i in the ordering computed
+    // works (but still 2800/10000 rejections, i.e., out of 10K lists, 2800 are empty; fix: change generator to avoid generation of empty lists)
     @Property
     @Report(Reporting.GENERATED)
-    void propAddDependency2 (@ForAll("nodeDependenciesAsMatrix") Integer[][] DependsOn,
-                             @ForAll @IntRange(min=0, max=3) Integer i,
-                             @ForAll @IntRange(min=0, max=3) Integer j) {
-        // Assume.that(TSHelpers.aCyclic(DependsOn));
-        Integer[][] DM0 = TSHelpers.clone(DependsOn);
-        DependsOn = addDependency(i, j, DependsOn);
-        if (!aCyclic(DependsOn)) {
-            System.out.println("DM after insert" + Arrays.deepToString(DependsOn));
-            Assertions.assertThat(reachable(j, i, DM0));
+    void propCheckComputedOrdering2b (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+//        int numNodes = 4;
+        Assume.that(!DependencyL.isEmpty());
+        List<Integer> pair = DependencyL.get(0);
+        List<Integer> ordering=null;
+        try {
+            ordering = computeOrdering(numNodes, DependencyL);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        int indexOfI = ordering.indexOf(pair.get(0));
+        int indexOfJ = ordering.indexOf(pair.get(1));
+        Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
+    }
+
+    // the ordering produced contains exactly the numbers 0 to numNodes-1
+    @Property
+    @Report(Reporting.GENERATED)
+    void propCheckComputedOrdering3 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+//        int numNodes = 4;
+        Assume.that(aCyclic(DependencyL));
+        List<Integer> ordering=null;
+        try {
+            ordering = computeOrdering(numNodes, DependencyL);
+            System.out.println("dependencies: " + DependencyL);
+            System.out.println("ordering: " + ordering);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        boolean res;
+        for (int i=0; i<numNodes; i++) {
+            res = ordering.remove((Object) i);
+            Assertions.assertThat(res).isTrue();
+        }
+        Assertions.assertThat(ordering).isEmpty();
+    }
+
+    // use Jqwik's test case generation to 'compute' a solution
+    // out of 10K tries, about 5K rejected
+    @Property
+    @Report(Reporting.GENERATED)
+    void propGenerateSolution (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                               @ForAll("orderings") List<Integer> order) {
+//        int numNodes = 4;
+//        Assume.that(aCyclic(DependencyL));
+//        Assume.that(numNodes == order.size());
+        Assume.that(checkOrdering(order,DependencyL) == true);
+//        Assertions.assertThat(checkOrdering(order,DependsOn)).isFalse();
+//        System.out.println("Dependencies: " + toStringSorted(DependencyL));
+//        System.out.println("Generated solution: " + order);
+    }
+
+    // removing a dependency preserves the correctness of an ordering
+    @Property
+    @Report(Reporting.GENERATED)
+    void propRemDependency (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                            @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                            @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+//        int numNodes = 4;
+//        Assume.that(aCyclic(DependencyL));
+        List<Integer> ordering0=null;
+        try {
+            ordering0 = computeOrdering(numNodes, DependencyL);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        DependencyL = removeDependency(i, j, DependencyL);
+        Assertions.assertThat(checkOrdering(ordering0, DependencyL)).isTrue();
+    }
+
+    // after adding dependency (i,j), j will appear before i in the ordering
+    @Property
+    @Report(Reporting.GENERATED)
+    void propAddDependency1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+        Assume.that(i != j);
+        DependencyL = addDependency(i,j,DependencyL);
+//        int numNodes = 4;
+        Assume.that(aCyclic(DependencyL));
+        List<Integer> ordering=null;
+        try {
+            ordering = computeOrdering(numNodes, DependencyL);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        int indexOfI = ordering.indexOf(i);
+        int indexOfJ = ordering.indexOf(j);
+        Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
+    }
+
+    // property: if dependencies DL acyclic and adding (i,j) makes DL cyclic , then i is reachable from j in DL
+    // assumes that dimensions of generated matrices are consistent with generated indices
+    @Property
+    @Report(Reporting.GENERATED)
+    void propAddDependency2 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+        // Assume.that(TSHelpers.aCyclic(DependencyM));
+//        int numNodes = 4;
+        List<List<Integer>> DepL0 = TSHelpers.cloneL(DependencyL);
+        DependencyL = addDependency(i, j, DependencyL);
+        if (!aCyclic(DependencyL)) {
+            System.out.println("Dependencies after add" + toStringSorted(DependencyL));
+            Assertions.assertThat(reachable(j, i, numNodes, DepL0));
         }
     }
 
-
-     /* property: if out is ordering of DM and i before j in out, then out is not an ordering of add(i,j,DM)
-     */
-
+     // property: if out is ordering of DL and i before j in out, then out is not an ordering of add(i,j,DL)
     @Property
     @Report(Reporting.GENERATED)
-    void aProp (@ForAll("nodeDependenciesAsListOfLists") List<List<Integer>> DL) {
-        System.out.println(DL);
-        Assertions.assertThat(DL.get(0).get(0) == 1).isTrue();
+    void propAddDependency3 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+//        int numNodes = 4;
+        Assume.that(i != j);
+        Assume.that(!DependencyL.contains(Arrays.asList(i,j)));
+        Assume.that(aCyclic(DependencyL));
+        List<Integer> ordering=null;
+        try {
+            ordering = computeOrdering(numNodes, DependencyL);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        int indexOfI = ordering.indexOf(i);
+        int indexOfJ = ordering.indexOf(j);
+        if (indexOfI < indexOfJ) {
+            DependencyL = addDependency(i, j, DependencyL);
+            Assertions.assertThat(checkOrdering(ordering, DependencyL)).isFalse();
+        }
+        else {
+            DependencyL = addDependency(j, i, DependencyL);
+            Assertions.assertThat(checkOrdering(ordering, DependencyL)).isFalse();
+        }
     }
 
+    // If i and j are independent and o is an ordering, then reversing the order of i and j in o also is an ordering
+    // fails
+    @Property
+    @Report(Reporting.GENERATED)
+    void propComputeOrderingAndIndependence (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+                                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+        Assume.that(i != j);
+//        int numNodes = 4;
+        Assume.that(independent(i, j, numNodes, DependencyL));
+        Assume.that(aCyclic(DependencyL));
+        List<Integer> ordering=null;
+        try {
+            ordering = computeOrdering(numNodes, DependencyL);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        System.out.println("Old ordering: " + ordering);
+        int indexOfI = ordering.indexOf(i);
+        int indexOfJ = ordering.indexOf(j);
+        ordering.set(indexOfI, j);
+        ordering.set(indexOfJ, i);
+        System.out.println("New ordering: " + ordering);
+//        Assertions.assertThat(checkOrdering(ordering, DependencyM)).isTrue();  // shuuld fail
+        Assertions.assertThat(checkOrdering(ordering, DependencyL)).isFalse();  // should also fail, but produce instance were it works
+    }
 
-    // generates candidate orderings
+// =============== Generators ===========================================================
+
+    // As 'dependencyListsCyclesPossible3', but also generated lists will not contain:
+    // - circles of any length
+    // (w/ 4 nodes, 0 of 10K lists contain a cycle)
     @Provide
-    public static Arbitrary<List<Integer>> orders() {
-        int numNodes = 4;
+    public Arbitrary<List<List<Integer>>> dependencyListsWithoutCycles() {
+   //     int numNodes = 4;
+        final int maxPairs = numNodes*numNodes;
+        final int minPairs = 0;
         Arbitrary<Integer> num = Arbitraries.integers().between(0,numNodes-1);
-        Arbitrary<List<Integer>> numList = num.list().uniqueElements().ofSize(numNodes);
-//        Arbitrary<List<Integer>> numList = num.list().uniqueElements().ofMinSize(2).ofMaxSize(4);
-        return numList;
+//        Arbitrary<List<Integer>> tuples = num.list().ofSize(2).uniqueElements().filter(t -> t.get(0)!=t.get(1));
+        Arbitrary<List<Integer>> tuples = num.list().ofSize(2).uniqueElements().filter(t -> t.get(0)!=t.get(1));
+        return tuples.list()
+                .ofMinSize(minPairs)
+                .ofMaxSize(maxPairs)
+                .uniqueElements()
+                .filter(ll -> aCyclic(ll));
     }
+
+    // As 'dependencyListsCyclesPossible2', but also generated lists will not contain:
+    // - circles of length 2, i.e., dependencies [i,j] and [j,i]
+    // (w/ 4 nodes, 700 of 10K lists contain a cycle)
+    @Provide
+    public Arbitrary<List<List<Integer>>> dependencyListsCyclesPossible3() {
+//        final int numNodes = 4;
+        final int maxPairs = numNodes*numNodes;
+        Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
+        Arbitrary<List<Integer>> pairs = nodes.list().ofSize(2).uniqueElements().filter(t -> t.get(0)!=t.get(1));
+        return
+                pairs.list()
+                        .ofMinSize(0)
+                        .ofMaxSize(maxPairs)
+                        .uniqueElements()
+                        .filter(depL -> {
+                            int i, j;
+                            List<Integer> revPair = new ArrayList<>();
+                            for (int ind = 0; ind < depL.size(); ind++) {
+                                i = depL.get(ind).get(0);
+                                j = depL.get(ind).get(1);
+                                revPair = Arrays.asList(j,i);
+                                if (depL.contains(revPair))
+                                    return false;
+                            }
+                            return true;
+                        });
+    }
+
+    // As 'dependencyListsCyclesPossible1', but also generated lists will not contain:
+    // - circles of length 1, i.e., dependencies [i,i]
+    // (w/ 4 nodes, 6600 of 10K lists contain a cycle)
+    @Provide
+    public Arbitrary<List<List<Integer>>> dependencyListsCyclesPossible2() {
+//        final int numNodes = 4;
+        final int maxPairs = numNodes*numNodes;
+        Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
+        Arbitrary<List<Integer>> pairs = nodes.list().ofSize(2).uniqueElements().filter(t -> t.get(0)!=t.get(1));
+        return pairs.list()
+                .ofMinSize(0)
+                .ofMaxSize(maxPairs)
+                .uniqueElements();
+    }
+
+    // Generates lists of pairs [..., [i,j], ...] where i, j are natural number between 0 and numNodes-1 representing nodes
+    // Pair [i,j] means that node i depends on node j.
+    // Generated lists will not contain: duplicate pairs.
+    // (w/ 4 nodes, 6500 of 10K lists contain a cycle)
+    @Provide
+    public Arbitrary<List<List<Integer>>> dependencyListsCyclesPossible1() {
+//        final int numNodes = 4;
+        final int maxPairs = numNodes*numNodes;
+        Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
+        Arbitrary<List<Integer>> pairs = nodes.list().ofSize(2).uniqueElements();
+        return pairs.list()
+                .ofMinSize(0)
+                .ofMaxSize(maxPairs)
+                .uniqueElements();
+    }
+
+    // generates candidate orderings, i.e., lists containing the numbers 0 to numNodes-1 in some random order
+    @Provide
+    public Arbitrary<List<Integer>> orderings() {
+//        int numNodes = 4;
+        Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
+        Arbitrary<List<Integer>> nodeList = nodes.list().uniqueElements().ofSize(numNodes);
+        return nodeList;
+    }
+
+// =============== Extra ==================================================================
 
     // generates square adjacency matrices containing 0 or 1 w/o cycles that involve 0 or 1 intermediate nodes
     // dimension of the matrix is between MinNumNodes and MaxNumNodes
@@ -130,10 +341,10 @@ public class TSProperties {
     // for dimension=3, generates 512 matrices of which 464 are acyclic (exhaustive)
     // for dimension=4, generates 65536 matrices of which 45536 are acyclic (exhaustive at 100K tries)
     @Provide
-    public static Arbitrary<Integer[][]> nodeDependenciesAsMatrix() {
-        final int MinNumNodes = 3;
+    public static Arbitrary<Integer[][]> dependencyMatrices() {
+        final int MinNumNodes = 4;
         final int MaxNumNodes = 4;
-        //       final int NumNodes = 5;  // NumNodes=4 needs 100K tries for exhaustive search
+        //       final int NumNodes = 5;  // NhumNodes=4 needs 100K tries for exhaustive search
         Arbitrary<Integer> intArb = Arbitraries.integers().between(0,1);
         Arbitrary<Integer[]> intArrayArb = intArb.array(Integer[].class).ofMinSize(MinNumNodes).ofMaxSize(MaxNumNodes);
         Arbitrary<Integer[][]> intMatrixArb =
@@ -159,15 +370,21 @@ public class TSProperties {
         return intMatrixArb;
     }
 
+// =============== Tests ==================================================================
+    @Property
+    public void propertyCheckListGenerator (@ForAll("depencencyLists1") List<List<Integer>> DependencyL) {
+        System.out.println(TopSort.toStringSorted(DependencyL));
+//        Assertions.assertThat(ll.size()).isLessThan(7); // holds
+    }
+
     @Provide
-    public Arbitrary<List<List<Integer>>> nodeDependenciesAsListOfLists() {
-        Arbitrary<Integer> num = Arbitraries.integers().between(0,1);
+    public Arbitrary<List<List<Integer>>> dependencyLists3() {
+        Arbitrary<Integer> nodes= Arbitraries.integers().between(0,1);
         //	Arbitrary<List<Integer>> numList = num.list().ofSize(3);
-        Arbitrary<List<Integer>> numList = num.list().ofMinSize(1).ofMaxSize(3);
-        return numList.list().ofMinSize(1).ofMaxSize(3).filter(ll -> {
+        Arbitrary<List<Integer>> nodeList = nodes.list().ofMinSize(1).ofMaxSize(3);
+        return nodeList.list().ofMinSize(1).ofMaxSize(3).filter(ll -> {
             int len = ll.get(0).size();
             return ll.stream().allMatch(l -> ll.size()==len && l.size()==len);});
     }
-
 
 }
