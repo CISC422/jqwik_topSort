@@ -1,6 +1,7 @@
 package TSTest;
 
 import net.jqwik.api.Example;
+import org.assertj.core.api.Assertions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,13 +38,24 @@ public class TSHelpers {
 
     @Example
     public void ex1() {
-        List<List<Integer>> DepL1 = new ArrayList<>(Arrays.asList(
+        List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
                 Arrays.asList(2,0),
                 Arrays.asList(2,1),
                 Arrays.asList(2,3),
                 Arrays.asList(3,1)
         ));
-        aCyclic(DepL1);
+        Assertions.assertThat(TSHelpers.aCyclic(depL)).isTrue();
+    }
+
+    @Example
+    public void ex2() {
+        List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
+                Arrays.asList(0,1),
+                Arrays.asList(1,2),
+                Arrays.asList(2,3),
+                Arrays.asList(3,0)
+        ));
+        Assertions.assertThat(TSHelpers.aCyclic(depL)).isTrue();
     }
 
     // check if there is a cycle in the dependency list

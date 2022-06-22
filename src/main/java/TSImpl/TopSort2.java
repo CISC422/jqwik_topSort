@@ -8,7 +8,7 @@ public class TopSort2 {
 
     public static class CyclicDependenciesException extends Exception {}
 
-    enum Label {NONE, TEMP, PERM};
+    enum Label {NONE, TEMP, PERM}
 
     static int findUnmarked(Label[] labels) {
         for (int i=0; i<labels.length; i++)

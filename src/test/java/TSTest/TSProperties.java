@@ -34,8 +34,8 @@ public class TSProperties {
     @Property
     @Report(Reporting.GENERATED)
 //   void propCheckComputedOrdering1 (@ForAll("dependencyMatrices") Integer[][] DependencyM) {
-//    void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
-        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+   void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
+//        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
   //      int numNodes = 4;
         List<Integer> ordering=null;
         try {
@@ -45,7 +45,7 @@ public class TSProperties {
             Assertions.assertThat(checkOrdering(ordering, DependencyL)).isTrue();
   //          Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isTrue();
         } catch (CyclicDependenciesException e) {
-            System.out.println("Cyclic dependencies!");
+            System.out.println("Cyclic dependencies!!!");
             Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isFalse();
         }
     }
@@ -56,20 +56,21 @@ public class TSProperties {
     @Property
     @Report(Reporting.GENERATED)
     void propCheckComputedOrdering2a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+//    void propCheckComputedOrdering2a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL,
                                      @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
                                      @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
 //        int numNodes = 4;
         Assume.that(DependencyL.contains(Arrays.asList(i,j)));
-        List<Integer> ordering=null;
         try {
+            List<Integer> ordering=null;
             ordering = computeOrdering(numNodes, DependencyL);
+            int indexOfI = ordering.indexOf(i);
+            int indexOfJ = ordering.indexOf(j);
+            Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
         }
         catch (CyclicDependenciesException e) {
             System.out.println("Cyclic!");
         }
-        int indexOfI = ordering.indexOf(i);
-        int indexOfJ = ordering.indexOf(j);
-        Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
     }
 
     // if i depends on j (i.e., DependencyL contains [i,j]), then j will appear before i in the ordering computed
