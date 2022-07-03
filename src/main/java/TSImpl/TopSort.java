@@ -11,10 +11,11 @@ import java.lang.RuntimeException;
 public class TopSort {
 
     //    public static class CyclicDependenciesExcept;ion extends Exception {}
-    public static class CyclicDependenciesException extends java.lang.RuntimeException {
-        public CyclicDependenciesException() {
-            super();
-        }
+    public static class CyclicDependenciesException extends RuntimeException {
+//        private static final long serialVersionUID = 1L;
+ //       public CyclicDependenciesException() {
+ //           super();
+//        }
         public CyclicDependenciesException(String msg) {
             super(msg);
         }
@@ -34,9 +35,8 @@ public class TopSort {
         if (labels[i] == Label.PERM)
             return;                       // i has already been output, so any dependency that a node under investigation has on i can be discharged
         if (labels[i] == Label.TEMP)
-//            throw new CyclicDependenciesException();    // i depends on itself --- oh, no!
-            throw new CyclicDependenciesException("Cyclic dependencies");    // i depends on itself --- oh, no!
-//      labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
+            throw new CyclicDependenciesException("Cyclic dependencies (node "+i+" depends on itself)");    // i depends on itself --- oh, no!
+//        labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
         // => bug not found when only considering acyclic lists
         labels[i] = Label.TEMP; // correct
         for (int j=0; j<labels.length; j++) {    // investigate all nodes that i depends on
@@ -45,7 +45,7 @@ public class TopSort {
             }
         }
         labels[i] = Label.PERM;       // all nodes that i depends on have been investigated and output, so we can also output i
-        //       out.add(0,i);          // bug 2: computed orderings violate constraints
+//        out.add(0,i);          // bug 2: computed orderings violate constraints
         out.add(i);  // correct
     }
 
@@ -73,10 +73,10 @@ public class TopSort {
         List<List<Integer>> depListCopy = new ArrayList<>();
         int len = depList.size();
         List<Integer> depI, depJ;
-        for (int i=0; i<len; i++) {
-            depI = depList.get(i);
+        for (List<Integer> integers : depList) {
+            depI = integers;
             int j;
-            for (j=0; j<depListCopy.size(); j++) {
+            for (j = 0; j < depListCopy.size(); j++) {
                 depJ = depListCopy.get(j);
                 if ((depI.get(0) < depJ.get(0)) || ((depI.get(0) == depJ.get(0)) && (depI.get(1) < depJ.get(1))))
                     break;
