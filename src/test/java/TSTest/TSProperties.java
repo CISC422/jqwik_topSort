@@ -1,3 +1,6 @@
+/* CISC/CMPE 422/835
+ * Properties and generators for property-based testing w/ Jqwik of TopSort implementation
+ */
 package TSTest;
 
 import TSImpl.TopSort;
@@ -18,47 +21,15 @@ public class TSProperties {
 
     final int  numNodes = 4;  // set of nodes is {0, ..., numNodes-1}
 
-    @Property
-    @Report(Reporting.GENERATED)
-//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> DependencyL) {
-//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
-//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible3") List<List<Integer>> DependencyL) {
-    void propGeneratorSanityCheck (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
-//        Assume.that(aCyclic(DependencyL));
-//        Assertions.assertThat(aCyclic(DependencyL));
-        if (aCyclic(DependencyL))
-            System.out.println("does NOT have cycle: " + toStringSorted(DependencyL));
-        else
-            System.out.println("does have cycle: " + toStringSorted(DependencyL));
-    }
-
-    // computed ordering does respect all dependencies
-    @Property
-    @Report(Reporting.GENERATED)
-//   void propCheckComputedOrdering1a (@ForAll("dependencyMatrices") Integer[][] DependencyM) {
-   void propCheckComputedOrdering1a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> DependencyL) {
-//        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
-  //      int numNodes = 4;
-        List<Integer> ordering=null;
-        try {
-            ordering = computeOrdering(numNodes, DependencyL);
-            System.out.println("dependencies: " + DependencyL);
-            System.out.println("order: " + ordering);
-            Assertions.assertThat(checkOrdering(ordering, DependencyL)).isTrue();
-  //          Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isTrue();
-        } catch (CyclicDependenciesException e) {
-            System.out.println("Cyclic dependencies!!!");
-            Assertions.assertThat(TSHelpers.aCyclic(DependencyL)).isFalse();
-        }
-    }
+// TESTING 'topSort' INDIVIDUALLY: Main properties (see notes) ===========================
 
     // P1: "computed ordering respect all dependencies"
     @Property
     @Report(Reporting.GENERATED)
-    void propCheckComputedOrdering1b (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
-//        void propCheckComputedOrdering1b (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+    void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
+//        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
         try {
-            List<Integer> ord = computeOrdering(numNodes, deps);
+            List<Integer> ord = topSort(numNodes, deps);
             System.out.println("dependencies: " + deps);
             System.out.println("order: " + ord);
             Assertions.assertThat(checkOrdering(ord,deps)).isTrue();
@@ -67,75 +38,13 @@ public class TSProperties {
         }
     }
 
-    // if dependencies acyclic, then computed ordering does respect all dependencies; else 'CyclicDependenciesException' is thrown
-    @Property
-    @Report(Reporting.GENERATED)
-    void propCheckComputedOrdering1c (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
-//        void propCheckComputedOrdering1c (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
-        if (aCyclic(deps)) {
-            System.out.println("dependencies (acyclic): " + deps);
-            List<Integer> ord = computeOrdering(numNodes, deps);
-            System.out.println("order: " + ord);
-            Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
-        }
-        else {
-            System.out.println("dependencies (cyclic): " + deps);
-            System.out.println("exception thrown");
-            Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
-                computeOrdering(numNodes, deps);
-            }).withMessageContaining("Cyclic dependencies");
-        }
-    }
-
-    // if i depends on j (i.e., DependencyL contains [i,j]), then j will appear before i in the ordering computed
-    // problem: too many rejections (9K out of 10K)
-    // fix: grab pair from generated dependency list, instead of generating it randomly
-    @Property
-    @Report(Reporting.GENERATED)
-    void propCheckComputedOrdering2a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
-//    void propCheckComputedOrdering2a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps,
-                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
-                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
-//        int numNodes = 4;
-        Assume.that(deps.contains(Arrays.asList(i,j)));
-        try {
-            List<Integer> ord = computeOrdering(numNodes, deps);
-            int indexOfI = ord.indexOf(i);
-            int indexOfJ = ord.indexOf(j);
-            Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
-        }
-        catch (CyclicDependenciesException e) {
-            System.out.println("Cyclic!");
-        }
-    }
-
-    // if i depends on j (i.e., DependencyL contains [i,j]), then j will appear before i in the ordering computed
-    // works (but still 2800/10000 rejections, i.e., out of 10K lists, 2800 are empty; fix: change generator to avoid generation of empty lists)
-    @Property
-    @Report(Reporting.GENERATED)
-    void propCheckComputedOrdering2b (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
-//        int numNodes = 4;
-        Assume.that(!deps.isEmpty());
-        List<Integer> pair = deps.get(0);
-        List<Integer> ord=null;
-        try {
-            ord = computeOrdering(numNodes, deps);
-        }
-        catch (CyclicDependenciesException e) {
-            System.out.println("Cyclic!");
-        }
-        int indexOfI = ord.indexOf(pair.get(0));
-        int indexOfJ = ord.indexOf(pair.get(1));
-        Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
-    }
-
     // P2: "the ordering produced contains exactly the numbers 0 to numNodes-1"
     @Property
     @Report(Reporting.GENERATED)
-//    void propCheckComputedOrdering3 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+//    void propCheckComputedOrdering3a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
     void propCheckComputedOrdering3a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
         try {
-            List<Integer> ord = computeOrdering(numNodes, deps);
+            List<Integer> ord = topSort(numNodes, deps);
             System.out.println("dependencies: " + deps);
             System.out.println("ordering: " + ord);
             boolean res=false;
@@ -150,14 +59,14 @@ public class TSProperties {
         }
     }
 
-    // P3: "If dependencies are acyclic, then topSort does not throw a runtime exception"
+    // P3a: "If dependencies are acyclic, then topSort does not throw a runtime exception"
     @Property
     @Report(Reporting.GENERATED)
 //    void propCheckProperTermination (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
-     void propCheckProperTermination (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
+    void propCheckProperTermination (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
         Assume.that(aCyclic(deps));
         System.out.println("dependencies: " + deps);
-        computeOrdering(numNodes, deps);
+        topSort(numNodes, deps);
     }
 
     // P4: "If dependencies are cyclic, then topSort thows 'CyclicDepsException'"
@@ -167,37 +76,94 @@ public class TSProperties {
         Assume.that(!aCyclic(deps));
         System.out.println("dependencies: " + deps);
         Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
-            computeOrdering(numNodes, deps);
+            topSort(numNodes, deps);
         }).withMessageContaining("Cyclic dependencies");
 
     }
 
+// TESTING 'topSort' INDIVIDUALLY: Additional properties ===========================
 
-    // use Jqwik's test case generation to 'compute' a solution
-    // out of 10K tries, about 5K rejected
+    // property computed ordering does respect all dependencies
     @Property
     @Report(Reporting.GENERATED)
-    void propGenerateSolution (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
-                               @ForAll("orderings") List<Integer> order) {
+   void propCheckComputedOrdering1a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
+//        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+        List<Integer> ord=null;
+        try {
+            ord = topSort(numNodes, deps);
+            System.out.println("dependencies: " + deps);
+            System.out.println("order: " + ord);
+            Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
+          } catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic dependencies!!!");
+            Assertions.assertThat(TSHelpers.aCyclic(deps)).isFalse();
+        }
+    }
+
+    // if dependencies acyclic, then computed ordering does respect all dependencies; else 'CyclicDependenciesException' is thrown
+    @Property
+    @Report(Reporting.GENERATED)
+    void propCheckComputedOrdering1c (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
+//        void propCheckComputedOrdering1c (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL) {
+        if (aCyclic(deps)) {
+            System.out.println("dependencies (acyclic): " + deps);
+            List<Integer> ord = topSort(numNodes, deps);
+            System.out.println("order: " + ord);
+            Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
+        }
+        else {
+            System.out.println("dependencies (cyclic): " + deps);
+            System.out.println("exception thrown");
+            Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
+                topSort(numNodes, deps);
+            }).withMessageContaining("Cyclic dependencies");
+        }
+    }
+
+    // if i depends on j (i.e., dependency list contains [i,j]), then j will appear before i in the ordering computed
+    // problem: too many rejections (9K out of 10K)
+    // fix: grab pair from generated dependency list, instead of generating it randomly
+    @Property
+    @Report(Reporting.GENERATED)
+    void propCheckComputedOrdering2a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
+//    void propCheckComputedOrdering2a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps,
+                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                                     @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
 //        int numNodes = 4;
-//        Assume.that(aCyclic(DependencyL));
-//        Assume.that(numNodes == order.size());
-        Assume.that(checkOrdering(order,DependencyL) == true);
-//        Assertions.assertThat(checkOrdering(order,DependsOn)).isFalse();
-//        System.out.println("Dependencies: " + toStringSorted(DependencyL));
-//        System.out.println("Generated solution: " + order);
+        Assume.that(deps.contains(Arrays.asList(i,j)));
+        try {
+            List<Integer> ord = topSort(numNodes, deps);
+            int indexOfI = ord.indexOf(i);
+            int indexOfJ = ord.indexOf(j);
+            Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
     }
 
-    // P_{rem1}: "removing a dependency preserves the correctness of an ordering"
+    // if i depends on j (i.e., dependency list contains [i,j]), then j will appear before i in the ordering computed
+    // works (but still 2800/10000 rejections, i.e., out of 10K lists, 2800 are empty; fix: change generator to avoid generation of empty lists)
     @Property
     @Report(Reporting.GENERATED)
-    void propRemDependency (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
-                            @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
-                            @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
-        List<Integer> ord = computeOrdering(numNodes, deps);
-        deps = removeDependency(i, j, deps);
-        Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
+    void propCheckComputedOrdering2b (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+//        int numNodes = 4;
+        Assume.that(!deps.isEmpty());
+        List<Integer> pair = deps.get(0);
+        List<Integer> ord=null;
+        try {
+            ord = topSort(numNodes, deps);
+        }
+        catch (CyclicDependenciesException e) {
+            System.out.println("Cyclic!");
+        }
+        int indexOfI = ord.indexOf(pair.get(0));
+        int indexOfJ = ord.indexOf(pair.get(1));
+        Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
     }
+
+
+// TESTING 'topSort' USING OTHER OPERATIONS: Main properties ===========================================================
 
     // P_{add1}: "after adding dependency (i,j), either topSort will throw 'CyclicDepsException' or j will appear before i in the computed ordering
     @Property
@@ -208,33 +174,17 @@ public class TSProperties {
         Assume.that(i != j);
         List<List<Integer>> deps1 = addDependency(i, j, deps);
         if (aCyclic(deps1)) {
-            List<Integer> ord = computeOrdering(numNodes, deps1);
+            List<Integer> ord = topSort(numNodes, deps1);
             int indexOfI = ord.indexOf(i);
             int indexOfJ = ord.indexOf(j);
             Assertions.assertThat(indexOfJ).isLessThan(indexOfI);
         } else {
             Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
-                computeOrdering(numNodes, deps1);
+                topSort(numNodes, deps1);
             }).withMessageContaining("Cyclic dependencies");
         }
     }
 
-    // property: if dependencies acyclic and adding (i,j) makes them cyclic, then i is reachable from j in DL
-    // assumes that dimensions of generated matrices are consistent with generated indices
-    @Property
-    @Report(Reporting.GENERATED)
-    void propAddDependency2 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
-                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
-                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
-        // Assume.that(TSHelpers.aCyclic(DependencyM));
-//        int numNodes = 4;
-        List<List<Integer>> deps0 = TSHelpers.cloneL(deps);
-        deps = addDependency(i, j, deps);
-        if (!aCyclic(deps)) {
-            System.out.println("Dependencies after add" + toStringSorted(deps));
-            Assertions.assertThat(reachable(j, i, numNodes, deps0));
-        }
-    }
 
      // P_{add2}: "if ord is ordering of deps and i before j in ord, then ord is not an ordering of addDep(i,j,deps)
     @Property
@@ -245,7 +195,7 @@ public class TSProperties {
         Assume.that(i != j);
         Assume.that(!deps.contains(Arrays.asList(i,j)));
         Assume.that(aCyclic(deps));
-        List<Integer> ord = computeOrdering(numNodes, deps);
+        List<Integer> ord = topSort(numNodes, deps);
         int indexOfI = ord.indexOf(i);
         int indexOfJ = ord.indexOf(j);
         if (indexOfI < indexOfJ) {
@@ -268,7 +218,7 @@ public class TSProperties {
         Assume.that(deps.contains(Arrays.asList(i,j)));
         Assume.that(deps.contains(Arrays.asList(j,k)));
         Assume.that(!deps.contains(Arrays.asList(i,k)));
-        List<Integer> ord = computeOrdering(numNodes, deps);
+        List<Integer> ord = topSort(numNodes, deps);
         deps = addDependency(i, k, deps);
         Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
     }
@@ -280,48 +230,90 @@ public class TSProperties {
                              @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
                              @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
         Assume.that(!deps.contains(Arrays.asList(i,j)));
-        List<Integer> ord = computeOrdering(numNodes, deps);
+        List<Integer> ord = topSort(numNodes, deps);
         deps = addDependency(i, j, deps);
         deps = removeDependency(i, j, deps);
         Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
+    }
+
+    // P_{rem1}: "removing a dependency preserves the correctness of an ordering"
+    @Property
+    @Report(Reporting.GENERATED)
+    void propRemDependency (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
+                            @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                            @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+        List<Integer> ord = topSort(numNodes, deps);
+        deps = removeDependency(i, j, deps);
+        Assertions.assertThat(checkOrdering(ord, deps)).isTrue();
+    }
+
+// TESTING 'topSort' USING OTHER OPERATIONS: Additional properties ===========================================================
+
+    // property: if dependencies acyclic and adding (i,j) makes them cyclic, then i is reachable from j in DL
+    // assumes that dimensions of generated matrices are consistent with generated indices
+    @Property
+    @Report(Reporting.GENERATED)
+    void propAddDependency2 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
+                             @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
+        // Assume.that(TSHelpers.aCyclic(DependencyM));
+//        int numNodes = 4;
+        List<List<Integer>> deps0 = TSHelpers.cloneL(deps);
+        deps = addDependency(i, j, deps);
+        if (!aCyclic(deps)) {
+            System.out.println("Dependencies after add" + toStringSorted(deps));
+            Assertions.assertThat(reachable(j, i, numNodes, deps0));
+        }
     }
 
     // If i and j are independent and o is an ordering, then reversing the order of i and j in o also is an ordering
     // fails
     @Property
     @Report(Reporting.GENERATED)
-    void propComputeOrderingAndIndependence (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> DependencyL,
+    void propComputeOrderingAndIndependence (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> depsL,
                                              @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
                                              @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
         Assume.that(i != j);
-//        int numNodes = 4;
-        Assume.that(independent(i, j, numNodes, DependencyL));
-        Assume.that(aCyclic(DependencyL));
-        List<Integer> ordering=null;
+        Assume.that(independent(i, j, numNodes, depsL));
+        Assume.that(aCyclic(depsL));
+        List<Integer> ord=null;
         try {
-            ordering = computeOrdering(numNodes, DependencyL);
+            ord = topSort(numNodes, depsL);
         }
         catch (CyclicDependenciesException e) {
             System.out.println("Cyclic!");
         }
-        System.out.println("Old ordering: " + ordering);
-        int indexOfI = ordering.indexOf(i);
-        int indexOfJ = ordering.indexOf(j);
-        ordering.set(indexOfI, j);
-        ordering.set(indexOfJ, i);
-        System.out.println("New ordering: " + ordering);
-//        Assertions.assertThat(checkOrdering(ordering, DependencyM)).isTrue();  // shuuld fail
-        Assertions.assertThat(checkOrdering(ordering, DependencyL)).isFalse();  // should also fail, but produce instance were it works
+        System.out.println("Old ordering: " + ord);
+        int indexOfI = ord.indexOf(i);
+        int indexOfJ = ord.indexOf(j);
+        ord.set(indexOfI, j);
+        ord.set(indexOfJ, i);
+        System.out.println("New ordering: " + ord);
+        Assertions.assertThat(checkOrdering(ord, depsL)).isFalse();  // should also fail, but produce instance were it works
     }
 
-// =============== Generators ===========================================================
+// USE GENERATOR TO 'COMPUTE' SOLUTION ===========================================================
+
+    // use Jqwik's test case generation to 'compute' a solution
+    // out of 10K tries, about 5K rejected
+    @Property
+    @Report(Reporting.GENERATED)
+    void propGenerateSolution (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps,
+                               @ForAll("orderings") List<Integer> ord) {
+//        Assume.that(aCyclic(deps));
+//        Assume.that(numNodes == ord.size());
+        Assume.that(checkOrdering(ord,deps) == true);
+        System.out.println("Dependencies: " + toStringSorted(deps));
+        System.out.println("Generated solution: " + ord);
+    }
+
+// GENERATORS ===========================================================
 
     // As 'dependencyListsCyclesPossible3', but also generated lists will not contain:
     // - circles of any length
     // (w/ 4 nodes, 0 of 10K lists contain a cycle)
     @Provide
     public Arbitrary<List<List<Integer>>> dependencyListsWithoutCycles() {
-   //     int numNodes = 4;
         final int maxPairs = numNodes*numNodes;
         final int minPairs = 0;
         Arbitrary<Integer> num = Arbitraries.integers().between(0,numNodes-1);
@@ -339,7 +331,6 @@ public class TSProperties {
     // (w/ 4 nodes, 700 of 10K lists contain a cycle)
     @Provide
     public Arbitrary<List<List<Integer>>> dependencyListsCyclesPossible3() {
-//        final int numNodes = 4;
         final int maxPairs = numNodes*numNodes;
         Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
         Arbitrary<List<Integer>> pairs = nodes.list().ofSize(2).uniqueElements().filter(t -> t.get(0)!=t.get(1));
@@ -405,7 +396,22 @@ public class TSProperties {
         return nodeList;
     }
 
-// =============== Extra ==================================================================
+// GENERATORS: Properties to test the generators ===========================
+    @Property
+    @Report(Reporting.GENERATED)
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
+//    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible3") List<List<Integer>> deps) {
+    void propGeneratorSanityCheck (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+//        Assume.that(aCyclic(deps));
+//        Assertions.assertThat(aCyclic(deps));
+        if (aCyclic(deps))
+            System.out.println("does NOT have cycle: " + toStringSorted(deps));
+        else
+            System.out.println("does have cycle: " + toStringSorted(deps));
+    }
+
+// BONUS ==================================================================
 
     // generates square adjacency matrices containing 0 or 1 w/o cycles that involve 0 or 1 intermediate nodes
     // dimension of the matrix is between MinNumNodes and MaxNumNodes
@@ -442,13 +448,6 @@ public class TSProperties {
         return intMatrixArb;
     }
 
-// =============== Tests ==================================================================
-    @Property
-    public void propertyCheckListGenerator (@ForAll("depencencyLists1") List<List<Integer>> DependencyL) {
-        System.out.println(TopSort.toStringSorted(DependencyL));
-//        Assertions.assertThat(ll.size()).isLessThan(7); // holds
-    }
-
     @Provide
     public Arbitrary<List<List<Integer>>> dependencyLists3() {
         Arbitrary<Integer> nodes= Arbitraries.integers().between(0,1);
@@ -459,12 +458,17 @@ public class TSProperties {
             return ll.stream().allMatch(l -> ll.size()==len && l.size()==len);});
     }
 
+// =============== Tests ==================================================================
+    @Property
+    public void propertyCheckListGenerator (@ForAll("depencencyLists1") List<List<Integer>> depsL) {
+        System.out.println(TopSort.toStringSorted(depsL));
+//        Assertions.assertThat(ll.size()).isLessThan(7); // holds
+    }
     @Property
     @Report(Reporting.GENERATED)
     public void aProp1(@ForAll @Positive @UniqueElements Integer i) {
         Assertions.assertThat(i).isLessThan(100000);
     }
-
     @Property
     @Report(Reporting.GENERATED)
     public void aProp2(@ForAll("fourMultiples") Integer i) {

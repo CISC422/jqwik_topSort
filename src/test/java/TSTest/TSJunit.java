@@ -1,3 +1,6 @@
+/* CISC/CMPE 422/835
+ * Example-based testing of TopSort with JUnit using '@Test'
+ */
 package TSTest;
 
 import java.util.List;
@@ -18,13 +21,8 @@ import static TSImpl.TopSort.*;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 public class TSJunit {
-    @Test
-    public void testAdd() {
-       Assertions.assertThat(Integer.sum(19, 23)).isEqualTo(41);
-    }
 
     @Test
-//    void exampleComputeOrderingTest() throws CyclicDependenciesException {
     void topSortTest1() {
         // dependencies: [[1,0], [2,1]]
         List<List<Integer>> deps = new ArrayList<>(Arrays.asList(
@@ -32,14 +30,13 @@ public class TSJunit {
                 Arrays.asList(2,1)
         ));
         System.out.println("dependencies: " + toStringSorted(deps));
-        List<Integer> ord = computeOrdering(3, deps);
+        List<Integer> ord = topSort(3, deps);
         System.out.println("ordering: " + ord);
         List<Integer> expected = new ArrayList<>(Arrays.asList(0,1,2));
         Assertions.assertThat(ord).isEqualTo(expected);
     }
 
     @Test
-//    void exampleComputeOrderingTest() throws CyclicDependenciesException {
     void topSortTest2() {
         // dependencies: [[1,0], [2,1], [0,2]]
         List<List<Integer>> deps = new ArrayList<>(Arrays.asList(
@@ -49,16 +46,16 @@ public class TSJunit {
         ));
         System.out.println("Dependencies: " + toStringSorted(deps));
         Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
-                    List<Integer> ordering = computeOrdering(3, deps);}).withMessageContaining("Cyclic dependencies");
+                    List<Integer> ord = topSort(3, deps);}).withMessageContaining("Cyclic dependencies");
     }
 
     @ParameterizedTest
     @MethodSource("dependenciesAndOrderingProvider")
     void topSortTest3(List<List<Integer>> input, List<Integer> expected) {
         System.out.println("Dependencies: " + toStringSorted(input));
-        List<Integer> ordering = computeOrdering(3, input);
-        System.out.println("Ordering: " + ordering);
-        Assertions.assertThat(ordering).isEqualTo(expected);
+        List<Integer> ord = topSort(3, input);
+        System.out.println("Ordering: " + ord);
+        Assertions.assertThat(ord).isEqualTo(expected);
     }
     static Stream<Arguments> dependenciesAndOrderingProvider() {
         List<Integer> d10 = Arrays.asList(1,0);
@@ -71,14 +68,14 @@ public class TSJunit {
         );
     }
 
+    // illustrate timeouts in Junit: test will be terminated after 0.1 seconds
     @Test
-    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
+    @Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
     void topSortTest4() {
         List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5); // finite stream
         List squares = nums.stream().map(x -> x*x).collect(Collectors.toList());
         System.out.println(squares);
-
-        Stream<Integer> evens = Stream.iterate(0, n -> n+2).limit(20000);  // bounded infinite stream
+        Stream<Integer> evens = Stream.iterate(0, n -> n+2).limit(200000);  // bounded infinite stream
         evens.forEach(n -> System.out.print(n+" "));
     }
 }
