@@ -27,7 +27,7 @@ public class TSProperties {
     @Property
     @Report(Reporting.GENERATED)
     void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
-//        void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+//    void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
         try {
             List<Integer> ord = topSort(numNodes, deps);
             System.out.println("dependencies: " + deps);
@@ -83,7 +83,7 @@ public class TSProperties {
 
 // TESTING 'topSort' INDIVIDUALLY: Additional properties ===========================
 
-    // property computed ordering does respect all dependencies
+    // computed ordering does respect all dependencies
     @Property
     @Report(Reporting.GENERATED)
    void propCheckComputedOrdering1a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
@@ -129,7 +129,6 @@ public class TSProperties {
 //    void propCheckComputedOrdering2a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps,
                                      @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
                                      @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
-//        int numNodes = 4;
         Assume.that(deps.contains(Arrays.asList(i,j)));
         try {
             List<Integer> ord = topSort(numNodes, deps);
@@ -257,7 +256,6 @@ public class TSProperties {
                              @ForAll @IntRange(min=0, max=numNodes-1) Integer i,
                              @ForAll @IntRange(min=0, max=numNodes-1) Integer j) {
         // Assume.that(TSHelpers.aCyclic(DependencyM));
-//        int numNodes = 4;
         List<List<Integer>> deps0 = TSHelpers.cloneL(deps);
         deps = addDependency(i, j, deps);
         if (!aCyclic(deps)) {
@@ -375,8 +373,6 @@ public class TSProperties {
     // (w/ 4 nodes, 6500 of 10K lists contain a cycle)
     @Provide
     public Arbitrary<List<List<Integer>>> dependencyListsCyclesPossible1() {
-//        final int numNodes = 4;
-//        final int maxPairs = numNodes*numNodes;
         final int maxPairs = numNodes;
         Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
 //        Arbitrary<List<Integer>> pairs = nodes.list().ofSize(2).uniqueElements();
@@ -390,7 +386,6 @@ public class TSProperties {
     // generates candidate orderings, i.e., lists containing the numbers 0 to numNodes-1 in some random order
     @Provide
     public Arbitrary<List<Integer>> orderings() {
-//        int numNodes = 4;
         Arbitrary<Integer> nodes = Arbitraries.integers().between(0,numNodes-1);
         Arbitrary<List<Integer>> nodeList = nodes.list().uniqueElements().ofSize(numNodes);
         return nodeList;
@@ -413,6 +408,7 @@ public class TSProperties {
 
 // BONUS ==================================================================
 
+    // dependencies can also be represented using a matrix, rather than a list of pairs
     // generates square adjacency matrices containing 0 or 1 w/o cycles that involve 0 or 1 intermediate nodes
     // dimension of the matrix is between MinNumNodes and MaxNumNodes
     // for dimension=2, generates 16 acyclic matrices (exhaustive)
@@ -458,24 +454,4 @@ public class TSProperties {
             return ll.stream().allMatch(l -> ll.size()==len && l.size()==len);});
     }
 
-// =============== Tests ==================================================================
-    @Property
-    public void propertyCheckListGenerator (@ForAll("depencencyLists1") List<List<Integer>> depsL) {
-        System.out.println(TopSort.toStringSorted(depsL));
-//        Assertions.assertThat(ll.size()).isLessThan(7); // holds
-    }
-    @Property
-    @Report(Reporting.GENERATED)
-    public void aProp1(@ForAll @Positive @UniqueElements Integer i) {
-        Assertions.assertThat(i).isLessThan(100000);
-    }
-    @Property
-    @Report(Reporting.GENERATED)
-    public void aProp2(@ForAll("fourMultiples") Integer i) {
-        Assertions.assertThat(i%2==0 && (i<91 || i>95)).isTrue();
-    }
-    @Provide
-    public Arbitrary<Integer> fourMultiples() {
-        return Arbitraries.integers().between(0,Integer.MAX_VALUE).filter(n -> n%4 == 0);
-    }
 }

@@ -141,7 +141,6 @@ public class TSExamples {
         System.out.println(ords);
     }
 
-
     // Use ordering generator to compute number of correct orderings of: [[2,0],[2,1],[2,3],[3,1]]
     @Example
     void exampleCountNumberOfOrderings() {

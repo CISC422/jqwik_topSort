@@ -15,7 +15,6 @@ ext {
     junitJupiterVersion = "5.8.2"
     jqwikVersion = "1.6.5"
     assertJVersion = "3.12.2"
-
 }
 
 compileJava {

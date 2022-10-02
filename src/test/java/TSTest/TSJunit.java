@@ -23,8 +23,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 public class TSJunit {
 
     @Test
-    void topSortTest1() {
-        // dependencies: [[1,0], [2,1]]
+    void topSortTest1() {  // non-cyclic dependencies: [[1,0], [2,1]]
         List<List<Integer>> deps = new ArrayList<>(Arrays.asList(
                 Arrays.asList(1,0),
                 Arrays.asList(2,1)
@@ -37,8 +36,7 @@ public class TSJunit {
     }
 
     @Test
-    void topSortTest2() {
-        // dependencies: [[1,0], [2,1], [0,2]]
+    void topSortTest2() {  // cyclic dependencies: [[1,0], [2,1], [0,2]]
         List<List<Integer>> deps = new ArrayList<>(Arrays.asList(
                 Arrays.asList(1,0),
                 Arrays.asList(2,1),
@@ -47,6 +45,7 @@ public class TSJunit {
         System.out.println("Dependencies: " + toStringSorted(deps));
         Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
                     List<Integer> ord = topSort(3, deps);}).withMessageContaining("Cyclic dependencies");
+                    System.out.println("Cyclic dependencies!");
     }
 
     @ParameterizedTest
@@ -64,18 +63,46 @@ public class TSJunit {
         return Stream.of(
                 arguments(Arrays.asList(d10,d21), Arrays.asList(0,1,2)),
                 arguments(Arrays.asList(d10,d21,d20), Arrays.asList(0,1,2)),
-                arguments(Arrays.asList(d10,d20), Arrays.asList(0,1,2))
+                arguments(Arrays.asList(d10,d20), Arrays.asList(0,1,2))  // but, ordering [0,2,1] also correct
         );
     }
 
-    // illustrate timeouts in Junit: test will be terminated after 0.1 seconds
+    // illustrate timeouts in Junit: input too big
     @Test
     @Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
     void topSortTest4() {
-        List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5); // finite stream
-        List squares = nums.stream().map(x -> x*x).collect(Collectors.toList());
-        System.out.println(squares);
-        Stream<Integer> evens = Stream.iterate(0, n -> n+2).limit(200000);  // bounded infinite stream
-        evens.forEach(n -> System.out.print(n+" "));
+        int numNodes = 1000;
+        List<List<Integer>> deps =  new ArrayList<List<Integer>>();
+        List<Integer> dep1 = new ArrayList<Integer>();
+        dep1.add(0);
+        dep1.add(1);
+        List<Integer> dep2 = new ArrayList<Integer>();
+        dep2.add(0);
+        dep2.add(1);
+        for (int i=0; i<numNodes; i++) {
+            dep1.set(0, i);
+            dep1.set(1, i+1);
+            dep2.set(0,i);
+            dep2.set(1,i+2);
+            deps.add(dep1);
+            deps.add(dep2);
+        }
+        List<Integer> ord = topSort(numNodes, deps);
+        System.out.println("Ordering: " + ord);
     }
+
+    // illustrate timeouts in Junit: unexpectedly slow computation or non-terminating computation
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.MILLISECONDS)
+    void topSortTest5() {  // cyclic dependencies: [[1,0], [2,1], [2,0]]
+        List<List<Integer>> deps = new ArrayList<>(Arrays.asList(
+                Arrays.asList(1,0),
+                Arrays.asList(2,1),
+                Arrays.asList(2,0)
+        ));
+        System.out.println("Dependencies: " + toStringSorted(deps));
+        List<Integer> ord = topSort(3, deps);
+        System.out.println("Ordering: " + ord);
+    }
+
 }

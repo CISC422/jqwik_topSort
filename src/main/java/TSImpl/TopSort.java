@@ -13,37 +13,12 @@ import java.lang.RuntimeException;
 //   (e.g., ordering may respect constraints, b/c it is empty as for Bug 3)
 public class TopSort {
 
+    enum Label {NONE, TEMP, PERM}  // nodes labeled PERM have been output (i.e., placed in the ordering); nodes labeled TEMP are currently under investigation
+
     public static class CyclicDependenciesException extends RuntimeException {
         public CyclicDependenciesException(String msg) {
             super(msg);
         }
-    }
-
-    enum Label {NONE, TEMP, PERM}
-
-    static int findUnmarked(Label[] labels) {
-        for (int i=0; i<labels.length; i++)
-            if (labels[i] != Label.PERM)
-                return i;
-        return -1;
-    }
-
-    static void visit(int i, Label[] labels, List<List<Integer>> DependencyL, List<Integer> out) {
-        if (labels[i] == Label.PERM)
-            return;                       // i has already been output, so any dependency that a node under investigation has on i can be discharged
-        if (labels[i] == Label.TEMP)
-            throw new CyclicDependenciesException("Cyclic dependencies (node "+i+" depends on itself)");    // i depends on itself
-//        labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
-                                   // => bug not found when only considering acyclic lists
-        labels[i] = Label.TEMP;    // correct
-        for (int j=0; j<labels.length; j++) {    // investigate all nodes that i depends on
-            if (DependencyL.contains(Arrays.asList(i,j))) {
-                visit(j, labels, DependencyL, out);
-            }
-        }
-        labels[i] = Label.PERM;       // all nodes that i depends on have been investigated and output, so we can also output i
-//        out.add(0,i);          // bug 2: computed orderings violate constraints
-        out.add(i);              // correct
     }
 
     // Computes topological ordering of a set of nodes. Assumes that
@@ -57,14 +32,68 @@ public class TopSort {
             labels[i] = Label.NONE;
         int i = findUnmarked(labels);
         while (i > -1) {  // correct
-        // while (i > 0) {  // bug 3: causes computed ordering to be empty;
-                            // resulting ordering does not violate any constraints, i.e., 'checkOrdering' holds
-                            // need property 'propCheckComputedOrdering3'
+//          while (i > 0) {  // bug 3: causes computed ordering to be empty;
+            // resulting ordering does not violate any constraints, i.e., 'checkOrdering' holds
+            // need property 'propCheckComputedOrdering3', caught by test 2
             visit(i, labels, DependencyL, ordering);
             i = findUnmarked(labels);
         }
         return ordering;
     }
+
+    // Returns a node that has not been ordered yet
+    static int findUnmarked(Label[] labels) {
+        boolean searchFromFront = true;  // (Math.random() < 0.5);
+        if (searchFromFront) {
+            for (int i = 0; i < labels.length; i++)
+                if (labels[i] != Label.PERM)  // correct
+//                if (labels[i] == Label.NONE)   // bug?
+                    return i;
+            return -1;
+        }
+        else {
+            for (int i = labels.length-1; i >= 0; i--)
+                if (labels[i] != Label.PERM)  // correct
+                    return i;
+            return -1;
+        }
+    }
+
+    // Explores nodes reachable from 'i'
+    static void visit(int i, Label[] labels, List<List<Integer>> DependencyL, List<Integer> out) {
+        if (labels[i] == Label.PERM)
+            return;                       // i has already been output, so any dependency that a node under investigation has on i can be discharged
+        if (labels[i] == Label.TEMP)
+            throw new CyclicDependenciesException("Cyclic dependencies (node "+i+" depends on itself)");    // i depends on itself
+ //       labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
+                                   // => bug not found when only considering acyclic lists (caught by 'test 2')
+        labels[i] = Label.TEMP;    // correct
+        for (int j=0; j<labels.length; j++) {    // investigate all nodes that i depends on
+            if (DependencyL.contains(Arrays.asList(i,j))) {
+                visit(j, labels, DependencyL, out);
+            }
+        }
+        labels[i] = Label.PERM;       // all nodes that i depends on have been investigated and output, so we can also output i
+//        out.add(0,i);          // bug 2: computed orderings violate constraints (caught by test 3)
+        out.add(i);              // correct
+//        for (int k=0; k<Integer.MAX_VALUE; k++);  // bug 4: execution takes too long
+    }
+
+    // OPERATIONS ON DEPENDENCY LISTS ====================================================
+
+    // adds the dependency [i,j] to the dependency list
+    public static List<List<Integer>> addDependency(int i, int j, List<List<Integer>> DependencyL) {
+        DependencyL.add(Arrays.asList(i,j));
+        return DependencyL;
+    }
+
+    // removes the dependency [i,j] from the dependency list
+    public static List<List<Integer>> removeDependency(int i, int j, List<List<Integer>> DependencyL) {
+        DependencyL.remove(Arrays.asList(i,j));
+        return DependencyL;
+    }
+
+    // HELPERS ====================================================
 
     // returns string of dependency list in which dependencies are ordered
     public static String toStringSorted(List<List<Integer>> depList) {
@@ -82,18 +111,6 @@ public class TopSort {
             depListCopy.add(j, depI);
         }
         return depListCopy.toString();
-    }
-
-    // adds the dependency [i,j] to the dependency list
-    public static List<List<Integer>> addDependency(int i, int j, List<List<Integer>> DependencyL) {
-        DependencyL.add(Arrays.asList(i,j));
-        return DependencyL;
-    }
-
-    // removes the dependency [i,j] from the dependency list
-    public static List<List<Integer>> removeDependency(int i, int j, List<List<Integer>> DependencyL) {
-        DependencyL.remove(Arrays.asList(i,j));
-        return DependencyL;
     }
 
 }
