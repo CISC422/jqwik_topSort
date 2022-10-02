@@ -34,7 +34,7 @@ public class TopSort {
         while (i > -1) {  // correct
 //          while (i > 0) {  // bug 3: causes computed ordering to be empty;
             // resulting ordering does not violate any constraints, i.e., 'checkOrdering' holds
-            // need property 'propCheckComputedOrdering3', caught by test 2
+            // need property 'propCheckComputedOrdering3'
             visit(i, labels, DependencyL, ordering);
             i = findUnmarked(labels);
         }
@@ -43,7 +43,7 @@ public class TopSort {
 
     // Returns a node that has not been ordered yet
     static int findUnmarked(Label[] labels) {
-        boolean searchFromFront = true;  // (Math.random() < 0.5);
+        boolean searchFromFront = true;  // (Math.random() < 0.5);  // randomizing the search can lead to different orderings to be found for the same deps
         if (searchFromFront) {
             for (int i = 0; i < labels.length; i++)
                 if (labels[i] != Label.PERM)  // correct
@@ -66,7 +66,7 @@ public class TopSort {
         if (labels[i] == Label.TEMP)
             throw new CyclicDependenciesException("Cyclic dependencies (node "+i+" depends on itself)");    // i depends on itself
  //       labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
-                                   // => bug not found when only considering acyclic lists (caught by 'test 2')
+                                   // => bug not found when only considering acyclic lists
         labels[i] = Label.TEMP;    // correct
         for (int j=0; j<labels.length; j++) {    // investigate all nodes that i depends on
             if (DependencyL.contains(Arrays.asList(i,j))) {
@@ -74,7 +74,7 @@ public class TopSort {
             }
         }
         labels[i] = Label.PERM;       // all nodes that i depends on have been investigated and output, so we can also output i
-//        out.add(0,i);          // bug 2: computed orderings violate constraints (caught by test 3)
+//        out.add(0,i);          // bug 2: computed orderings violate constraints
         out.add(i);              // correct
 //        for (int k=0; k<Integer.MAX_VALUE; k++);  // bug 4: execution takes too long
     }

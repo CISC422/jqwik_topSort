@@ -82,7 +82,7 @@ public class TSExamples {
                 Arrays.asList(3,0)
         ));
         System.out.println("Dependencies: " + toStringSorted(depL));
-        List<Integer> ordering=null;
+        List<Integer> ordering;
         try {
             ordering = topSort(4, depL);
         }
