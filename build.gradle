@@ -11,10 +11,10 @@ repositories {
 }
 
 ext {
-    junitPlatformVersion = '1.8.2'
-    junitJupiterVersion = '5.8.2'
-    jqwikVersion = '1.6.3'
-    assertJVersion = '3.12.2'
+    junitPlatformVersion = "1.8.2"
+    junitJupiterVersion = "5.8.2"
+    jqwikVersion = "1.6.5"
+    assertJVersion = "3.12.2"
 }
 
 compileJava {
@@ -36,6 +36,7 @@ test {
 dependencies {
     // aggregate jqwik dependency
     testImplementation "net.jqwik:jqwik:${jqwikVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
 
     // engine and assertions for Junit5-based tests
     testRuntimeOnly "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
