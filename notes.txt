@@ -1,6 +1,0 @@
-- matrix generator
-  . produces square matrices
-  . but, shrinking does not seem to work across matrix dimensions
-- arbitraries to compute solutions
-  . how to compute an ordering by having generator produce candidate solutions and then checking them
-  . how to compute all orderings by having generator produce candidate solutions and then checking them
