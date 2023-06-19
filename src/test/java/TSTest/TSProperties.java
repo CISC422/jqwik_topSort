@@ -23,11 +23,11 @@ public class TSProperties {
 
 // TESTING 'topSort' INDIVIDUALLY: Main properties (see notes) ===========================
 
-    // P1: "computed ordering respect all dependencies"
+    // P1(ord,deps): "computed ordering ord respects all dependencies in deps"
     @Property
     @Report(Reporting.GENERATED)
     void propCheckComputedOrdering1 (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
-//    void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+//   void propCheckComputedOrdering1 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
         try {
             List<Integer> ord = topSort(numNodes, deps);
             System.out.println("dependencies: " + deps);
@@ -38,11 +38,11 @@ public class TSProperties {
         }
     }
 
-    // P2: "the ordering produced contains exactly the numbers 0 to numNodes-1"
+    // P2(m,ord): "computed ordering ord contains every number between 0 and m-1 exactly once"
     @Property
     @Report(Reporting.GENERATED)
-//    void propCheckComputedOrdering3a (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
-    void propCheckComputedOrdering3a (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
+//    void propCheckComputedOrdering2 (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
+    void propCheckComputedOrdering2 (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
         try {
             List<Integer> ord = topSort(numNodes, deps);
             System.out.println("dependencies: " + deps);
@@ -59,7 +59,7 @@ public class TSProperties {
         }
     }
 
-    // P3a: "If dependencies are acyclic, then topSort does not throw a runtime exception"
+    // P3a(deps): "If dependencies in deps are acyclic, then topSort does not throw a runtime exception"
     @Property
     @Report(Reporting.GENERATED)
 //    void propCheckProperTermination (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
@@ -69,7 +69,7 @@ public class TSProperties {
         topSort(numNodes, deps);
     }
 
-    // P4: "If dependencies are cyclic, then topSort thows 'CyclicDepsException'"
+    // P4(deps): "If dependencies in deps are cyclic, then topSort thows 'CyclicDepsException'"
     @Property
     @Report(Reporting.GENERATED)
     void propCheckCyclicDepsException (@ForAll("dependencyListsCyclesPossible1") List<List<Integer>> deps) {
@@ -398,7 +398,7 @@ public class TSProperties {
 //    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible2") List<List<Integer>> deps) {
 //    void propGeneratorCheck (@ForAll("dependencyListsCyclesPossible3") List<List<Integer>> deps) {
     void propGeneratorSanityCheck (@ForAll("dependencyListsWithoutCycles") List<List<Integer>> deps) {
-//        Assume.that(aCyclic(deps));
+ //       Assume.that(aCyclic(deps));
 //        Assertions.assertThat(aCyclic(deps));
         if (aCyclic(deps))
             System.out.println("does NOT have cycle: " + toStringSorted(deps));

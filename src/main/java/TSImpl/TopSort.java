@@ -31,10 +31,9 @@ public class TopSort {
         for (int i=0; i<numNodes; i++)
             labels[i] = Label.NONE;
         int i = findUnmarked(labels);
-        while (i > -1) {  // correct
-//          while (i > 0) {  // bug 3: causes computed ordering to be empty;
-            // resulting ordering does not violate any constraints, i.e., 'checkOrdering' holds
-            // need property 'propCheckComputedOrdering3'
+        while (i > -1) {     // correct
+//          while (i > 0) {  // BUG 1: causes computed ordering to be empty
+                             // BUG 1: property P1 holds, but P2 fails
             visit(i, labels, DependencyL, ordering);
             i = findUnmarked(labels);
         }
@@ -45,15 +44,18 @@ public class TopSort {
     static int findUnmarked(Label[] labels) {
         boolean searchFromFront = true;  // (Math.random() < 0.5);  // randomizing the search can lead to different orderings to be found for the same deps
         if (searchFromFront) {
-            for (int i = 0; i < labels.length; i++)
-                if (labels[i] != Label.PERM)  // correct
-//                if (labels[i] == Label.NONE)   // bug?
+            for (int i = 0; i < labels.length-1; i++)   // BUG 2: causes ordering to not contain all nodes, if no node depends on last node (i.e., numNodes-1);
+                                                        // BUG 2: also prevents cycle to be detected, if last node last node depends on itself
+                                                        // BUG 2: example tests and all properties except P2 and P4 (but only for certain input dependencies)
+//          for (int i = 0; i < labels.length; i++)     // correct
+                if (labels[i] != Label.PERM)
+//                if (labels[i] == Label.NONE)          // also correct
                     return i;
             return -1;
         }
         else {
             for (int i = labels.length-1; i >= 0; i--)
-                if (labels[i] != Label.PERM)  // correct
+                if (labels[i] != Label.PERM)            // correct
                     return i;
             return -1;
         }
@@ -65,8 +67,8 @@ public class TopSort {
             return;                       // i has already been output, so any dependency that a node under investigation has on i can be discharged
         if (labels[i] == Label.TEMP)
             throw new CyclicDependenciesException("Cyclic dependencies (node "+i+" depends on itself)");    // i depends on itself
- //       labels[i] = Label.PERM;  // bug 1: causes output of ordering even in case of cyclic list
-                                   // => bug not found when only considering acyclic lists
+ //       labels[i] = Label.PERM;  // BUG 3: causes output of ordering even in case of cyclic list
+                                   // BUG 3: bug not found when only considering acyclic lists
         labels[i] = Label.TEMP;    // correct
         for (int j=0; j<labels.length; j++) {    // investigate all nodes that i depends on
             if (DependencyL.contains(Arrays.asList(i,j))) {
@@ -74,9 +76,9 @@ public class TopSort {
             }
         }
         labels[i] = Label.PERM;       // all nodes that i depends on have been investigated and output, so we can also output i
-//        out.add(0,i);          // bug 2: computed orderings violate constraints
-        out.add(i);              // correct
-//        for (int k=0; k<Integer.MAX_VALUE; k++);  // bug 4: execution takes too long
+//        out.add(0,i);               // BUG 4: computed orderings violate constraints
+        out.add(i);                   // correct
+//        for (int k=0; k<Integer.MAX_VALUE; k++);  // BUG 5: execution takes too long
     }
 
     // OPERATIONS ON DEPENDENCY LISTS ====================================================

@@ -15,7 +15,7 @@ public class TSExamples {
 
     @Example
     void exampleACyclicTest1() {
-        // dependencies are: ((0,2), (0,1), (1,2), (2,0))
+        // cyclic dependencies: [(0,2), (0,1), (1,2), (2,0)]
         List<List<Integer>> depsL1 = new ArrayList<>(Arrays.asList(
                 Arrays.asList(0,2),
                 Arrays.asList(0,1),
@@ -28,7 +28,7 @@ public class TSExamples {
 
     @Example
     void exampleACyclicTest2() {
-        // dependencies are: ((0,1), (1,2), (2,3), (0,3))
+        // acyclic dependencies: ((0,1), (1,2), (2,3), (0,3))
         List<List<Integer>> depsL2 = new ArrayList<>(Arrays.asList(
                 Arrays.asList(0,1),
                 Arrays.asList(1,2),
@@ -41,22 +41,23 @@ public class TSExamples {
 
     @Example
     void exampleTopSortTest1() {
-        // dependencies: ((2,0), (2,1), (2,3), (3,1), (3,2))
+        // dependencies: [(0,1),(1,2)]
+        // ordering: [2,1,0]
         List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
-                Arrays.asList(2,0),
-                Arrays.asList(2,1),
-                Arrays.asList(2,3),
-                Arrays.asList(3,1),
-                Arrays.asList(3,2)
+                Arrays.asList(0,1),
+                Arrays.asList(1,2)
         ));
         System.out.println("Dependencies: " + toStringSorted(depL));
-        List<Integer> ordering = topSort(4, depL);
+        List<Integer> ordering = topSort(3, depL);
         System.out.println("Ordering: " + ordering);
+        List<Integer> expected = new ArrayList<>(Arrays.asList(2,1,0));
+        Assertions.assertThat(ordering).isEqualTo(expected);
     }
 
     @Example
     void exampleTopSortTest2() {
-        // dependencies: ((2,0), (2,1), (2,3), (3,1))
+        // dependencies: [(2,0), (2,1), (2,3), (3,1)]
+        // possible orderings: [0,1,3,2] and [1,0,3,2]
         List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
                 Arrays.asList(2,0),
                 Arrays.asList(2,1),
@@ -70,29 +71,38 @@ public class TSExamples {
         Assertions.assertThat(ordering).isEqualTo(expected);
     }
 
-
     @Example
     void exampleTopSortTest3() {
-        // dependencies: ((2,0), (2,1), (2,3), (3,1), (3,2))
+        // dependencies: [(2,0), (2,1), (2,3), (3,1), (3,2)]
+        // ordering: none
         List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
                 Arrays.asList(2,0),
                 Arrays.asList(2,1),
                 Arrays.asList(2,3),
                 Arrays.asList(3,1),
-                Arrays.asList(3,0)
+                Arrays.asList(3,2)
         ));
         System.out.println("Dependencies: " + toStringSorted(depL));
-        List<Integer> ordering;
-        try {
-            ordering = topSort(4, depL);
-        }
-        catch (CyclicDependenciesException c) {
-            System.out.println("Cyclic");
-            return;
-        }
-        System.out.println("Ordering: " + ordering);
-        TSHelpers.checkOrdering(ordering, depL);
+        Assertions.assertThatExceptionOfType(CyclicDependenciesException.class)
+                .isThrownBy(() -> {topSort(4, depL);})
+                .withMessageContaining("Cyclic dependencies");
+        System.out.println("No ordering found: cyclic dependencies");
     }
+
+    @Example
+    void exampleTopSortTest4() {
+        // dependencies: [(2,2)]
+        // ordering: none
+        List<List<Integer>> depL = new ArrayList<>(Arrays.asList(
+                Arrays.asList(2,2)
+        ));
+        System.out.println("Dependencies: " + toStringSorted(depL));
+        Assertions.assertThatExceptionOfType(CyclicDependenciesException.class)
+                .isThrownBy(() -> {topSort(4, depL);})
+                .withMessageContaining("Cyclic dependencies");
+        System.out.println("No ordering found: cyclic dependencies");
+    }
+
 
     // Examples involving the generator for orderings ====================================================
     // Use generator to implement "generate & check" paradigm (cf, Prolog)
