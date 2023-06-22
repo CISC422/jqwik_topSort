@@ -78,7 +78,6 @@ public class TSProperties {
         Assertions.assertThatExceptionOfType(CyclicDependenciesException.class).isThrownBy(() -> {
             topSort(numNodes, deps);
         }).withMessageContaining("Cyclic dependencies");
-
     }
 
 // TESTING 'topSort' INDIVIDUALLY: Additional properties ===========================

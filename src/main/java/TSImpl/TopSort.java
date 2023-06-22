@@ -44,10 +44,10 @@ public class TopSort {
     static int findUnmarked(Label[] labels) {
         boolean searchFromFront = true;  // (Math.random() < 0.5);  // randomizing the search can lead to different orderings to be found for the same deps
         if (searchFromFront) {
-            for (int i = 0; i < labels.length-1; i++)   // BUG 2: causes ordering to not contain all nodes, if no node depends on last node (i.e., numNodes-1);
-                                                        // BUG 2: also prevents cycle to be detected, if last node last node depends on itself
-                                                        // BUG 2: example tests and all properties except P2 and P4 (but only for certain input dependencies)
-//          for (int i = 0; i < labels.length; i++)     // correct
+//            for (int i = 0; i < labels.length-1; i++)   // BUG 2: causes ordering to not contain all nodes, if no node depends on last node (i.e., numNodes-1);
+                                                        // BUG 2: also prevents cycle to be detected, if last node depends on itself
+                                                        // BUG 2: example tests and all properties except P2 and P4 succeed
+            for (int i = 0; i < labels.length; i++)     // correct
                 if (labels[i] != Label.PERM)
 //                if (labels[i] == Label.NONE)          // also correct
                     return i;
